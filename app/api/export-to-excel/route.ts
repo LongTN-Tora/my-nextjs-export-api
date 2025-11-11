@@ -1,27 +1,38 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 
-export async function POST(request: Request) {
+export async function handler(request: Request) {
+  // Kiểm tra phương thức HTTP (POST)
+  if (request.method !== "POST") {
+    return new NextResponse(
+      JSON.stringify({ error: "Method Not Allowed" }),
+      { status: 405 } // Lỗi 405 nếu phương thức không phải POST
+    );
+  }
+
   try {
+    // Đọc dữ liệu JSON từ Power Apps gửi lên
     const raw = await request.text();
+    
     let data;
     try {
-      // Parse dữ liệu JSON từ Power Automate
-      data = JSON.parse(JSON.parse(raw)); // Nếu gửi JSON lồng nhau từ Power Automate
+      // Giải mã JSON từ Power Apps (có thể là JSON lồng nhau)
+      data = JSON.parse(JSON.parse(raw));
     } catch {
-      data = JSON.parse(raw); // Nếu gửi JSON đơn giản
+      // Nếu không phải JSON lồng nhau, chỉ cần parse một lần
+      data = JSON.parse(raw);
     }
 
-    // Chuyển JSON thành Excel
+    // Tạo workbook từ dữ liệu JSON
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Export");
 
-    // Xuất Excel ra binary buffer
+    // Chuyển workbook thành buffer (binary)
     const excelBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
     // Trả về file Excel dưới dạng binary
-    return new Response(excelBuffer, {
+    return new NextResponse(excelBuffer, {
       status: 200,
       headers: {
         "Content-Type":
@@ -30,8 +41,9 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to generate Excel file" },
+    console.error("Error generating Excel:", error);
+    return new NextResponse(
+      JSON.stringify({ error: "Failed to generate Excel file" }),
       { status: 500 }
     );
   }
