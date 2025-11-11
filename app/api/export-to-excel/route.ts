@@ -1,15 +1,7 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 
-export async function handler(request: Request) {
-  // Kiểm tra phương thức HTTP (POST)
-  if (request.method !== "POST") {
-    return new NextResponse(
-      JSON.stringify({ error: "Method Not Allowed" }),
-      { status: 405 } // Lỗi 405 nếu phương thức không phải POST
-    );
-  }
-
+export async function POST(request: Request) {
   try {
     // Đọc dữ liệu JSON từ Power Apps gửi lên
     const raw = await request.text();
@@ -32,7 +24,7 @@ export async function handler(request: Request) {
     const excelBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
     // Trả về file Excel dưới dạng binary
-    return new NextResponse(excelBuffer, {
+    return new Response(excelBuffer, {
       status: 200,
       headers: {
         "Content-Type":
@@ -42,8 +34,8 @@ export async function handler(request: Request) {
     });
   } catch (error) {
     console.error("Error generating Excel:", error);
-    return new NextResponse(
-      JSON.stringify({ error: "Failed to generate Excel file" }),
+    return NextResponse.json(
+      { error: "Failed to generate Excel file" },
       { status: 500 }
     );
   }
