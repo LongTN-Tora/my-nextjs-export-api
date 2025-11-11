@@ -1,36 +1,49 @@
-// /pages/api/export-to-excel.ts
+import { NextResponse } from "next/server";
 
-import { NextApiRequest, NextApiResponse } from 'next';
-import * as XLSX from 'xlsx';
+export async function POST(request: Request) {
+  try {
+    // Lấy raw body từ request
+    const raw = await request.text();
+    console.log("Raw body from Flow:", raw);
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'POST') {
+    let data;
     try {
-      // Nhận dữ liệu từ Power Automate (dữ liệu sẽ được gửi dưới dạng JSON trong body)
-      const { data } = req.body;  // Dữ liệu JSON từ Power Automate
-
-      // Kiểm tra nếu dữ liệu không có
-      if (!data) {
-        return res.status(400).json({ error: 'No data received' });
+      // Thử parse JSON nếu dữ liệu là JSON
+      data = JSON.parse(raw);
+    } catch (error: unknown) {
+      // Kiểm tra xem lỗi có phải là Error không
+      if (error instanceof Error) {
+        console.error("Error parsing JSON:", error.message);
+        return NextResponse.json({
+          message: "Failed to parse JSON",
+          error: error.message,
+        }, { status: 400 });
       }
-
-      // Xử lý dữ liệu và tạo file Excel từ JSON
-      const ws = XLSX.utils.json_to_sheet(data);  // Chuyển dữ liệu JSON thành worksheet
-      const wb = XLSX.utils.book_new();           // Tạo một workbook mới
-      XLSX.utils.book_append_sheet(wb, ws, 'Sheet1'); // Thêm worksheet vào workbook
-      const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });  // Chuyển workbook thành buffer
-
-      // Trả về file Excel
-      res.status(200)
-        .setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        .setHeader('Content-Disposition', `attachment; filename="export_${Date.now()}.xlsx"`)
-        .send(excelBuffer);  // Gửi buffer của file Excel
-
-    } catch (error) {
-      console.error('Error generating Excel:', error);
-      res.status(500).json({ error: 'Failed to generate Excel file' });
+      // Nếu lỗi không phải là Error
+      return NextResponse.json({
+        message: "Unknown error occurred",
+      }, { status: 500 });
     }
-  } else {
-    res.status(405).json({ error: 'Method Not Allowed' });  // Chỉ cho phép phương thức POST
+
+    console.log("Parsed data:", data);
+
+    // Trả về dữ liệu nhận được dưới dạng JSON
+    return NextResponse.json({
+      message: "Data received successfully",
+      received: data,
+    });
+  } catch (error: unknown) {
+    // Kiểm tra xem lỗi có phải là Error không
+    if (error instanceof Error) {
+      console.error("Error parsing request:", error.message);
+      return NextResponse.json({
+        message: "An error occurred while processing the request",
+        error: error.message,
+      }, { status: 500 });
+    }
+    // Nếu lỗi không phải là Error
+    return NextResponse.json({
+      message: "Unknown error occurred",
+    }, { status: 500 });
   }
 }
