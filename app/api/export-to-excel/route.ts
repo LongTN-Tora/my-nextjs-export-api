@@ -1,42 +1,35 @@
+
 import { NextResponse } from "next/server";
-import * as XLSX from "xlsx";
 
 export async function POST(request: Request) {
   try {
-    // Đọc dữ liệu JSON từ Power Apps gửi lên
-    const raw = await request.text();
-    
+    const raw = await request.text(); 
+    console.log("Raw body from Flow:", raw);
+
+   
     let data;
     try {
-      // Giải mã JSON từ Power Apps (có thể là JSON lồng nhau)
+      
       data = JSON.parse(JSON.parse(raw));
     } catch {
-      // Nếu không phải JSON lồng nhau, chỉ cần parse một lần
       data = JSON.parse(raw);
     }
 
-    // Tạo workbook từ dữ liệu JSON
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Export");
+    console.log("Parsed data:", data);
 
-    // Chuyển workbook thành buffer (binary)
-    const excelBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-
-    // Trả về file Excel dưới dạng binary
-    return new Response(excelBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="export_${Date.now()}.xlsx"`,
-      },
+    return NextResponse.json({
+      message: "Data received successfully",
+      received: data,
     });
   } catch (error) {
-    console.error("Error generating Excel:", error);
+    console.error("Error parsing request:", error);
     return NextResponse.json(
-      { error: "Failed to generate Excel file" },
+      { error: "Failed to parse request" },
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ message: "API is live" });
 }
