@@ -12,6 +12,13 @@ export interface PowerAppRecord {
   customerName: string;
 }
 
+export interface PowerAppRecordWithMetadata {
+  id: number;
+  transactionID: number | string;
+  [key: string]: unknown; // Cho phép các trường tiếng Nhật và các trường khác từ record
+  createdAt: Date | string;
+}
+
 function safeTrim(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
@@ -31,7 +38,7 @@ function toNumber(value: unknown): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-function selectValue<T>(item: Record<string, any>, keys: string[], transform: (value: unknown) => T): T {
+function selectValue<T>(item: Record<string, unknown>, keys: string[], transform: (value: unknown) => T): T {
   for (const key of keys) {
     if (key in item) {
       return transform(item[key]);
@@ -40,7 +47,7 @@ function selectValue<T>(item: Record<string, any>, keys: string[], transform: (v
   return transform(undefined);
 }
 
-function unwrapPossibleJson(value: any): any {
+function unwrapPossibleJson(value: unknown): unknown {
   if (typeof value !== 'string') {
     return value;
   }
@@ -59,46 +66,48 @@ function unwrapPossibleJson(value: any): any {
   }
 }
 
-function resolveRecords(node: any): { records: any[]; transactionID?: number } {
+function resolveRecords(node: unknown): { records: Record<string, unknown>[]; transactionID?: number } {
   const unwrapped = unwrapPossibleJson(node);
 
   // Nếu là object có data.records và transactionID
-  if (unwrapped && typeof unwrapped === 'object') {
-    if ('data' in unwrapped && unwrapped.data) {
-      const data = unwrapPossibleJson(unwrapped.data);
-      if (data && typeof data === 'object' && 'records' in data) {
+  if (unwrapped && typeof unwrapped === 'object' && unwrapped !== null) {
+    const obj = unwrapped as Record<string, unknown>;
+    if ('data' in obj && obj.data) {
+      const data = unwrapPossibleJson(obj.data);
+      if (data && typeof data === 'object' && data !== null && 'records' in data) {
+        const dataObj = data as Record<string, unknown>;
         return {
-          records: Array.isArray(data.records) ? data.records : [],
-          transactionID: unwrapped.transactionID || data.transactionID,
+          records: Array.isArray(dataObj.records) ? (dataObj.records as Record<string, unknown>[]) : [],
+          transactionID: (obj.transactionID as number) || (dataObj.transactionID as number),
         };
       }
     }
-    if ('records' in unwrapped) {
+    if ('records' in obj) {
       return {
-        records: Array.isArray(unwrapped.records) ? unwrapped.records : [],
-        transactionID: unwrapped.transactionID,
+        records: Array.isArray(obj.records) ? (obj.records as Record<string, unknown>[]) : [],
+        transactionID: obj.transactionID as number | undefined,
       };
     }
-    if ('value' in unwrapped) {
-      return resolveRecords(unwrapped.value);
+    if ('value' in obj) {
+      return resolveRecords(obj.value);
     }
-    if ('items' in unwrapped) {
+    if ('items' in obj) {
       return {
-        records: Array.isArray(unwrapped.items) ? unwrapped.items : [],
-        transactionID: unwrapped.transactionID,
+        records: Array.isArray(obj.items) ? (obj.items as Record<string, unknown>[]) : [],
+        transactionID: obj.transactionID as number | undefined,
       };
     }
   }
 
   // Nếu là array trực tiếp
   if (Array.isArray(unwrapped)) {
-    return { records: unwrapped };
+    return { records: unwrapped as Record<string, unknown>[] };
   }
 
   throw new Error('Không tìm thấy mảng dữ liệu records trong payload gửi lên.');
 }
 
-function normaliseRecord(raw: Record<string, any>): PowerAppRecord {
+function normaliseRecord(raw: Record<string, unknown>): PowerAppRecord {
   return {
     area: selectValue(raw, ['エリア', 'area'], safeTrim),
     forecastRatio: selectValue(raw, ['予想比', 'forecast_ratio', 'forecastRatio'], toNumber),
@@ -111,7 +120,7 @@ function normaliseRecord(raw: Record<string, any>): PowerAppRecord {
   };
 }
 
-export function parsePowerAppsPayload(raw: string): { records: any[]; transactionID?: number } {
+export function parsePowerAppsPayload(raw: string): { records: Record<string, unknown>[]; transactionID?: number } {
   const resolved = resolveRecords(raw);
   if (!Array.isArray(resolved.records)) {
     throw new Error('Payload không chứa danh sách records hợp lệ.');
@@ -125,7 +134,7 @@ export function parsePowerAppsPayload(raw: string): { records: any[]; transactio
 
 export async function insertPowerAppsRecord(
   transactionID: number | null,
-  records: any[],
+  records: Record<string, unknown>[],
   connection = getDbPool()
 ): Promise<{ saved: number }> {
   if (!records || records.length === 0) {
@@ -152,7 +161,7 @@ export async function fetchPowerAppsRecords(transactionID?: string | null) {
                       createdAt
                  FROM data_powerapp`;
   
-  const queryParams: any[] = [];
+  const queryParams: (string | number)[] = [];
   
   if (transactionID !== null && transactionID !== undefined) {
     query += ` WHERE transactionID = ?`;
@@ -165,17 +174,17 @@ export async function fetchPowerAppsRecords(transactionID?: string | null) {
   const [rows] = await pool.query<RowDataPacket[]>(query, queryParams);
 
   // Parse JSON body và flatten records
-  const allRecords: any[] = [];
+  const allRecords: PowerAppRecordWithMetadata[] = [];
   rows.forEach((row) => {
     try {
       const body = typeof row.body === 'string' ? JSON.parse(row.body) : row.body;
       if (Array.isArray(body)) {
-        body.forEach((record) => {
+        body.forEach((record: Record<string, unknown>) => {
           allRecords.push({
-            id: row.id,
-            transactionID: row.transactionID,
+            id: row.id as number,
+            transactionID: row.transactionID as number | string,
             ...record,
-            createdAt: row.createdAt,
+            createdAt: row.createdAt as Date | string,
           });
         });
       }

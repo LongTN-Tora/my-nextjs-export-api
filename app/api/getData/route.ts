@@ -11,17 +11,17 @@ export async function GET(request: Request) {
     const rows = await fetchPowerAppsRecords(transactionID);
 
     // Format lại với tên trường tiếng Nhật
-    const formatted = rows.map((row: any) => ({
+    const formatted = rows.map((row) => ({
       id: row.id,
       transactionID: row.transactionID,
-      エリア: row['エリア'] || row.area || '',
-      予想比: row['予想比'] || row.forecast_ratio || 0,
-      予算: row['予算'] || row.budget || 0,
-      実績: row['実績'] || row.actual || 0,
-      月: row['月'] || row.month || 0,
-      製品名: row['製品名'] || row.product_name || '',
-      見込: row['見込'] || row.outlook || 0,
-      顧客名: row['顧客名'] || row.customer_name || '',
+      エリア: (row['エリア'] as string) || (row.area as string) || '',
+      予想比: (row['予想比'] as number) || (row.forecast_ratio as number) || 0,
+      予算: (row['予算'] as number) || (row.budget as number) || 0,
+      実績: (row['実績'] as number) || (row.actual as number) || 0,
+      月: (row['月'] as number) || (row.month as number) || 0,
+      製品名: (row['製品名'] as string) || (row.product_name as string) || '',
+      見込: (row['見込'] as number) || (row.outlook as number) || 0,
+      顧客名: (row['顧客名'] as string) || (row.customer_name as string) || '',
       createdAt: row.createdAt,
     }));
 
