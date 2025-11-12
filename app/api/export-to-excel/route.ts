@@ -1,49 +1,39 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { insertPowerAppsRecords, parsePowerAppsPayload } from '@/lib/powerApps';
 
 export async function POST(request: Request) {
   try {
-    // Lấy raw body từ request
     const raw = await request.text();
-    console.log("Raw body from Flow:", raw);
+    console.log('Raw body from Flow:', raw);
 
-    let data;
-    try {
-      // Thử parse JSON nếu dữ liệu là JSON
-      data = JSON.parse(raw);
-    } catch (error: unknown) {
-      // Kiểm tra xem lỗi có phải là Error không
-      if (error instanceof Error) {
-        console.error("Error parsing JSON:", error.message);
-        return NextResponse.json({
-          message: "Failed to parse JSON",
-          error: error.message,
-        }, { status: 400 });
-      }
-      // Nếu lỗi không phải là Error
-      return NextResponse.json({
-        message: "Unknown error occurred",
-      }, { status: 500 });
+    const records = parsePowerAppsPayload(raw);
+    console.log('Parsed records count:', records.length);
+
+    if (!records.length) {
+      return NextResponse.json(
+        { message: 'Không có dữ liệu để lưu.' },
+        { status: 400 }
+      );
     }
 
-    console.log("Parsed data:", data);
+    const { saved } = await insertPowerAppsRecords(records);
 
-    // Trả về dữ liệu nhận được dưới dạng JSON
     return NextResponse.json({
-      message: "Data received successfully",
-      received: data,
+      message: 'Nhận dữ liệu thành công.',
+      saved,
     });
-  } catch (error: unknown) {
-    // Kiểm tra xem lỗi có phải là Error không
-    if (error instanceof Error) {
-      console.error("Error parsing request:", error.message);
-      return NextResponse.json({
-        message: "An error occurred while processing the request",
-        error: error.message,
-      }, { status: 500 });
-    }
-    // Nếu lỗi không phải là Error
-    return NextResponse.json({
-      message: "Unknown error occurred",
-    }, { status: 500 });
+  } catch (error) {
+    console.error('Error parsing request:', error);
+    return NextResponse.json(
+      {
+        error: 'Không thể xử lý yêu cầu.',
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ message: 'API is live' });
 }
