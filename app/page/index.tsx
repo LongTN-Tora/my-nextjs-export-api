@@ -1,33 +1,43 @@
-interface DataItem {
-  id: number;
-  エリア: string; // Area
-  予想比: number; // Forecast Ratio
-  予算: number; // Budget
-  実績: number; // Actual
-  月: number; // Month
-  製品名: string; // Product Name
-  見込: number; // Outlook
-  顧客名: string; // Customer Name
-  created_at?: string;
-}
+'use client';
 
 import { useEffect, useState } from 'react';
 
-const Home = () => {
+interface DataItem {
+  id: number;
+  transactionID: number | string;
+  エリア: string;
+  予想比: number;
+  予算: number;
+  実績: number;
+  月: number;
+  製品名: string;
+  見込: number;
+  顧客名: string;
+  createdAt: string | Date;
+}
+
+export default function Home() {
   const [data, setData] = useState<DataItem[]>([]);
+  const [filteredData, setFilteredData] = useState<DataItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [transactionFilter, setTransactionFilter] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/getData');
+        const url = transactionFilter 
+          ? `/api/getData?transactionID=${transactionFilter}`
+          : '/api/getData';
+        const res = await fetch(url);
         if (!res.ok) {
           throw new Error('Failed to fetch data');
         }
         const result = await res.json();
         setData(result);
+        setFilteredData(result);
         setError(null);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -37,69 +47,198 @@ const Home = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [transactionFilter]);
+
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredData(data);
+      return;
+    }
+
+    const filtered = data.filter((item) => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        item.エリア.toLowerCase().includes(searchLower) ||
+        item.製品名.toLowerCase().includes(searchLower) ||
+        item.顧客名.toLowerCase().includes(searchLower) ||
+        String(item.transactionID).includes(searchTerm)
+      );
+    });
+    setFilteredData(filtered);
+  }, [searchTerm, data]);
+
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('vi-VN').format(num);
+  };
+
+  const formatDate = (date: string | Date) => {
+    if (!date) return '-';
+    return new Date(date).toLocaleString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   if (loading) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <p>Đang tải dữ liệu...</p>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="text-gray-600">Đang tải dữ liệu...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>
-        <p>{error}</p>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="rounded-lg bg-red-50 p-6 text-center">
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          >
+            Thử lại
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Dữ liệu từ Power Apps</h1>
-      {data.length === 0 ? (
-        <p>Không có dữ liệu</p>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f3f4f6' }}>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>ID</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>エリア (Khu vực)</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>予想比 (Tỷ lệ dự báo)</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>予算 (Ngân sách)</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>実績 (Thực tế)</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>月 (Tháng)</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>製品名 (Tên sản phẩm)</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>見込 (Triển vọng)</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>顧客名 (Tên khách hàng)</th>
-                <th style={{ padding: '12px', border: '1px solid #ddd', textAlign: 'left' }}>Ngày tạo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((item) => (
-                <tr key={item.id} style={{ backgroundColor: '#fff' }}>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.id}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.エリア}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.予想比}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.予算}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.実績}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.月}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.製品名}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.見込}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.顧客名}</td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                    {item.created_at ? new Date(item.created_at).toLocaleString('vi-VN') : '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6">
+          <h1 className="mb-2 text-3xl font-bold text-gray-900">Dữ liệu từ Power Apps</h1>
+          <p className="text-gray-600">Tổng số bản ghi: {filteredData.length} / {data.length}</p>
         </div>
-      )}
+
+        {/* Filters */}
+        <div className="mb-6 flex flex-col gap-4 rounded-lg bg-white p-4 shadow-sm md:flex-row">
+          <div className="flex-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Tìm kiếm (Khu vực, Sản phẩm, Khách hàng)
+            </label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Nhập từ khóa..."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Lọc theo Transaction ID
+            </label>
+            <input
+              type="text"
+              value={transactionFilter}
+              onChange={(e) => setTransactionFilter(e.target.value)}
+              placeholder="Nhập Transaction ID..."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          {transactionFilter && (
+            <div className="flex items-end">
+              <button
+                onClick={() => setTransactionFilter('')}
+                className="rounded-md bg-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-300"
+              >
+                Xóa filter
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Table */}
+        {filteredData.length === 0 ? (
+          <div className="rounded-lg bg-white p-8 text-center shadow-sm">
+            <p className="text-gray-500">Không có dữ liệu</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
+                    ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
+                    Transaction ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
+                    エリア
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-700">
+                    予想比
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-700">
+                    予算
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-700">
+                    実績
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-700">
+                    月
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
+                    製品名
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-700">
+                    見込
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
+                    顧客名
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
+                    Ngày tạo
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {filteredData.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {item.id}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-gray-600">
+                      {String(item.transactionID)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {item.エリア}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
+                      {formatNumber(item.予想比)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
+                      {formatNumber(item.予算)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-gray-900">
+                      {formatNumber(item.実績)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-900">
+                      {item.月}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.製品名}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-gray-900">
+                      {formatNumber(item.見込)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{item.顧客名}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                      {formatDate(item.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
-};
-
-export default Home;
+}
