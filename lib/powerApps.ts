@@ -59,26 +59,40 @@ function unwrapPossibleJson(value: any): any {
   }
 }
 
-function resolveRecords(node: any): any[] {
+function resolveRecords(node: any): { records: any[]; transactionID?: number } {
   const unwrapped = unwrapPossibleJson(node);
 
-  if (Array.isArray(unwrapped)) {
-    return unwrapped;
-  }
-
+  // Nếu là object có data.records và transactionID
   if (unwrapped && typeof unwrapped === 'object') {
-    if ('records' in unwrapped) {
-      return resolveRecords(unwrapped.records);
+    if ('data' in unwrapped && unwrapped.data) {
+      const data = unwrapPossibleJson(unwrapped.data);
+      if (data && typeof data === 'object' && 'records' in data) {
+        return {
+          records: Array.isArray(data.records) ? data.records : [],
+          transactionID: unwrapped.transactionID || data.transactionID,
+        };
+      }
     }
-    if ('data' in unwrapped) {
-      return resolveRecords(unwrapped.data);
+    if ('records' in unwrapped) {
+      return {
+        records: Array.isArray(unwrapped.records) ? unwrapped.records : [],
+        transactionID: unwrapped.transactionID,
+      };
     }
     if ('value' in unwrapped) {
       return resolveRecords(unwrapped.value);
     }
     if ('items' in unwrapped) {
-      return resolveRecords(unwrapped.items);
+      return {
+        records: Array.isArray(unwrapped.items) ? unwrapped.items : [],
+        transactionID: unwrapped.transactionID,
+      };
     }
+  }
+
+  // Nếu là array trực tiếp
+  if (Array.isArray(unwrapped)) {
+    return { records: unwrapped };
   }
 
   throw new Error('Không tìm thấy mảng dữ liệu records trong payload gửi lên.');
@@ -97,57 +111,78 @@ function normaliseRecord(raw: Record<string, any>): PowerAppRecord {
   };
 }
 
-export function parsePowerAppsPayload(raw: string): PowerAppRecord[] {
-  const resolvedRecords = resolveRecords(raw);
-  if (!Array.isArray(resolvedRecords)) {
+export function parsePowerAppsPayload(raw: string): { records: any[]; transactionID?: number } {
+  const resolved = resolveRecords(raw);
+  if (!Array.isArray(resolved.records)) {
     throw new Error('Payload không chứa danh sách records hợp lệ.');
   }
 
-  return resolvedRecords.map((record) => normaliseRecord(record ?? {}));
+  return {
+    records: resolved.records,
+    transactionID: resolved.transactionID,
+  };
 }
 
-export async function insertPowerAppsRecords(records: PowerAppRecord[], connection = getDbPool()): Promise<{ saved: number }> {
-  if (!records.length) {
+export async function insertPowerAppsRecord(
+  transactionID: number | null,
+  records: any[],
+  connection = getDbPool()
+): Promise<{ saved: number }> {
+  if (!records || records.length === 0) {
     return { saved: 0 };
   }
 
-  const values = records.map((record) => [
-    record.area || null,
-    record.forecastRatio,
-    record.budget,
-    record.actual,
-    record.month,
-    record.productName || null,
-    record.outlook,
-    record.customerName || null,
-  ]);
-
+  // Lưu transactionID và body (JSON chứa records array)
   const [result] = await connection.query<ResultSetHeader>(
-    `INSERT INTO data_powerapp
-      (area, forecast_ratio, budget, actual, month, product_name, outlook, customer_name)
-      VALUES ?`,
-    [values]
+    `INSERT INTO data_powerapp (transactionID, body, createdAt)
+     VALUES (?, ?, NOW())`,
+    [transactionID || null, JSON.stringify(records)]
   );
 
-  return { saved: result.affectedRows ?? records.length };
+  return { saved: result.affectedRows ?? 1 };
 }
 
-export async function fetchPowerAppsRecords() {
+export async function fetchPowerAppsRecords(transactionID?: string | null) {
   const pool = getDbPool();
-  const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT id,
-            area,
-            forecast_ratio,
-            budget,
-            actual,
-            month,
-            product_name,
-            outlook,
-            customer_name,
-            created_at
-       FROM data_powerapp
-       ORDER BY created_at DESC`
-  );
+  
+  // Nếu có transactionID, filter theo transactionID
+  let query = `SELECT id,
+                      transactionID,
+                      body,
+                      createdAt
+                 FROM data_powerapp`;
+  
+  const queryParams: any[] = [];
+  
+  if (transactionID !== null && transactionID !== undefined) {
+    query += ` WHERE transactionID = ?`;
+    // Dùng string trực tiếp, MySQL sẽ tự động convert khi so sánh với BIGINT
+    queryParams.push(transactionID);
+  }
+  
+  query += ` ORDER BY createdAt DESC`;
 
-  return rows;
+  const [rows] = await pool.query<RowDataPacket[]>(query, queryParams);
+
+  // Parse JSON body và flatten records
+  const allRecords: any[] = [];
+  rows.forEach((row) => {
+    try {
+      const body = typeof row.body === 'string' ? JSON.parse(row.body) : row.body;
+      if (Array.isArray(body)) {
+        body.forEach((record) => {
+          allRecords.push({
+            id: row.id,
+            transactionID: row.transactionID,
+            ...record,
+            createdAt: row.createdAt,
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error parsing body JSON:', error);
+    }
+  });
+
+  return allRecords;
 }

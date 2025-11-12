@@ -1,21 +1,28 @@
 import { NextResponse } from 'next/server';
 import { fetchPowerAppsRecords } from '@/lib/powerApps';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const rows = await fetchPowerAppsRecords();
+    // Lấy query parameter transactionID từ URL
+    const { searchParams } = new URL(request.url);
+    const transactionIDParam = searchParams.get('transactionID');
+    const transactionID = transactionIDParam || null;
 
-    const formatted = rows.map((row) => ({
+    const rows = await fetchPowerAppsRecords(transactionID);
+
+    // Format lại với tên trường tiếng Nhật
+    const formatted = rows.map((row: any) => ({
       id: row.id,
-      エリア: row.area,
-      予想比: row.forecast_ratio,
-      予算: row.budget,
-      実績: row.actual,
-      月: row.month,
-      製品名: row.product_name,
-      見込: row.outlook,
-      顧客名: row.customer_name,
-      created_at: row.created_at,
+      transactionID: row.transactionID,
+      エリア: row['エリア'] || row.area || '',
+      予想比: row['予想比'] || row.forecast_ratio || 0,
+      予算: row['予算'] || row.budget || 0,
+      実績: row['実績'] || row.actual || 0,
+      月: row['月'] || row.month || 0,
+      製品名: row['製品名'] || row.product_name || '',
+      見込: row['見込'] || row.outlook || 0,
+      顧客名: row['顧客名'] || row.customer_name || '',
+      createdAt: row.createdAt,
     }));
 
     return NextResponse.json(formatted);

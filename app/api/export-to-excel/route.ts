@@ -1,29 +1,31 @@
 
 
 import { NextResponse } from 'next/server';
-import { insertPowerAppsRecords, parsePowerAppsPayload } from '@/lib/powerApps';
+import { insertPowerAppsRecord, parsePowerAppsPayload } from '@/lib/powerApps';
 
 export async function POST(request: Request) {
-  console.log('aaaaaaaaaaaaaaaa', request);
   try {
     const raw = await request.text();
     console.log('Raw body from Flow:', raw);
 
-    const records = parsePowerAppsPayload(raw);
+    const { records, transactionID } = parsePowerAppsPayload(raw);
     console.log('Parsed records count:', records.length);
+    console.log('Transaction ID:', transactionID);
 
-    if (!records.length) {
+    if (!records || records.length === 0) {
       return NextResponse.json(
         { message: 'Không có dữ liệu để lưu.' },
         { status: 400 }
       );
     }
 
-    const { saved } = await insertPowerAppsRecords(records);
+    const { saved } = await insertPowerAppsRecord(transactionID || null, records);
 
     return NextResponse.json({
       message: 'Nhận dữ liệu thành công.',
       saved,
+      transactionID,
+      recordsCount: records.length,
     });
   } catch (error) {
     console.error('Error parsing request:', error);
@@ -37,6 +39,3 @@ export async function POST(request: Request) {
   }
 }
 
-// export async function GET() {
-//   return NextResponse.json({ message: 'API is live' });
-// }

@@ -7,7 +7,14 @@ let pool: Pool | null = null;
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
+    const available = Object.keys(process.env)
+      .filter(key => key.startsWith('MYSQL_'))
+      .join(', ');
+    throw new Error(
+      `Missing required environment variable: ${name}\n` +
+      `Available MYSQL_* variables: ${available || 'none'}\n` +
+      `Please configure environment variables in .env.local (local) or Vercel dashboard (production).`
+    );
   }
   return value;
 }
