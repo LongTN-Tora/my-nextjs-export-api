@@ -3,14 +3,10 @@ import { fetchPowerAppsRecords } from '@/lib/powerApps';
 
 export async function GET(request: Request) {
   try {
-    // Lấy query parameter transactionID từ URL
     const { searchParams } = new URL(request.url);
     const transactionIDParam = searchParams.get('transactionID');
     const transactionID = transactionIDParam || null;
-
     const rows = await fetchPowerAppsRecords(transactionID);
-
-    // Format lại với tên trường tiếng Nhật
     const formatted = rows.map((row) => ({
       id: row.id,
       transactionID: row.transactionID,
@@ -30,7 +26,7 @@ export async function GET(request: Request) {
     console.error('Error fetching Power Apps data:', error);
     return NextResponse.json(
       {
-        message: 'Không thể lấy dữ liệu.',
+        message: 'Cannot get data.',
         error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }

@@ -41,7 +41,7 @@ export default function Home() {
         setError(null);
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError('Không thể tải dữ liệu');
+        setError('Cannot load data');
       } finally {
         setLoading(false);
       }
@@ -87,7 +87,7 @@ export default function Home() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-          <p className="text-gray-600">Đang tải dữ liệu...</p>
+          <p className="text-gray-600">Loading data...</p>
         </div>
       </div>
     );
@@ -102,7 +102,7 @@ export default function Home() {
             onClick={() => window.location.reload()}
             className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
           >
-            Thử lại
+            try again
           </button>
         </div>
       </div>
@@ -113,33 +113,32 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">Dữ liệu từ Power Apps</h1>
-          <p className="text-gray-600">Tổng số bản ghi: {filteredData.length} / {data.length}</p>
+          <h1 className="mb-2 text-3xl font-bold text-gray-900">Data Power Apps</h1>
+          <p className="text-gray-600">Total number of records: {filteredData.length} / {data.length}</p>
         </div>
 
-        {/* Filters */}
         <div className="mb-6 flex flex-col gap-4 rounded-lg bg-white p-4 shadow-sm md:flex-row">
           <div className="flex-1">
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Tìm kiếm (Khu vực, Sản phẩm, Khách hàng)
+              Search (Area, Product, Customer)
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Nhập từ khóa..."
+              placeholder="Enter keyword..."
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
           <div className="flex-1">
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Lọc theo Transaction ID
+              Filter by Transaction ID
             </label>
             <input
               type="text"
               value={transactionFilter}
               onChange={(e) => setTransactionFilter(e.target.value)}
-              placeholder="Nhập Transaction ID..."
+              placeholder="Enter Transaction ID..."
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -149,16 +148,15 @@ export default function Home() {
                 onClick={() => setTransactionFilter('')}
                 className="rounded-md bg-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-300"
               >
-                Xóa filter
+                Clear filter
               </button>
             </div>
           )}
         </div>
 
-        {/* Table */}
         {filteredData.length === 0 ? (
           <div className="rounded-lg bg-white p-8 text-center shadow-sm">
-            <p className="text-gray-500">Không có dữ liệu</p>
+            <p className="text-gray-500">No data</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
@@ -196,7 +194,7 @@ export default function Home() {
                     顧客名
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
-                    Ngày tạo
+                    Created At
                   </th>
                 </tr>
               </thead>

@@ -33,7 +33,7 @@ export default function ScreenPage() {
   useEffect(() => {
     if (!transactionID) {
       setLoading(false);
-      setError('Transaction ID không được tìm thấy trong URL');
+      setError('Transaction ID not found in URL');
       return;
     }
 
@@ -49,7 +49,7 @@ export default function ScreenPage() {
         setError(null);
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError('Không thể tải dữ liệu');
+        setError('Unable to load data');
       } finally {
         setLoading(false);
       }
@@ -57,6 +57,42 @@ export default function ScreenPage() {
 
     fetchData();
   }, [transactionID]);
+
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        .print-content,
+        .print-content * {
+          visibility: visible;
+        }
+        .print-content {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+        }
+        .no-print {
+          display: none !important;
+        }
+        .print-content table {
+          border-collapse: collapse;
+        }
+        .print-content th,
+        .print-content td {
+          border: 1px solid #ddd;
+          padding: 8px;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('vi-VN').format(num);
@@ -67,7 +103,7 @@ export default function ScreenPage() {
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-          <p className="text-gray-600">Đang tải dữ liệu...</p>
+          <p className="text-gray-600">Loading data...</p>
         </div>
       </div>
     );
@@ -82,30 +118,65 @@ export default function ScreenPage() {
             onClick={() => window.location.reload()}
             className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
           >
-            Thử lại
+            try again
           </button>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">Dữ liệu từ Power Apps</h1>
-          <p className="text-gray-600">
-            Transaction ID: <span className="font-mono">{transactionID}</span> • Tổng số bản ghi: {data.length}
-          </p>
-        </div>
+  const handlePrint = () => {
+    window.print();
+  };
 
-        {/* Table */}
+  return (
+      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-6 flex items-center justify-between no-print">
+            <div>
+              <h1 className="mb-2 text-3xl font-bold text-gray-900">Data Power Apps</h1>
+              <p className="text-gray-600">
+                Transaction ID: <span className="font-mono">{transactionID}</span> • Total number of records: {data.length}
+              </p>
+            </div>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                />
+              </svg>
+              Print PDF
+            </button>
+          </div>
+
+          <div className="mb-6 print-content hidden print:block">
+            <h1 className="mb-2 text-2xl font-bold text-gray-900">Data Power Apps</h1>
+            <p className="text-gray-600">
+              Transaction ID: <span className="font-mono">{transactionID}</span> • Total number of records: {data.length}
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
+            Print date: {new Date().toLocaleString('en-US')}
+            </p>
+          </div>
+
         {data.length === 0 ? (
-          <div className="rounded-lg bg-white p-8 text-center shadow-sm">
-            <p className="text-gray-500">Không có dữ liệu</p>
+          <div className="rounded-lg bg-white p-8 text-center shadow-sm print-content">
+            <p className="text-gray-500">No data</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-lg bg-white shadow-sm print-content">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>

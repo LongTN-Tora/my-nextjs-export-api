@@ -15,15 +15,11 @@ const db = mysql.createConnection({
 export async function POST(request: Request) {
   try {
     const raw = await request.text();
-    console.log('Raw body from Flow111:', raw);
-
     const { records, transactionID } = parsePowerAppsPayload(raw);
-    console.log('Parsed records count:', records.length);
-    console.log('Transaction ID:', transactionID);
 
     if (!records || records.length === 0) {
       return NextResponse.json(
-        { message: 'Không có dữ liệu để lưu.' },
+        { message: 'No data to save.' },
         { status: 400 }
       );
     }
@@ -31,7 +27,7 @@ export async function POST(request: Request) {
     const { saved } = await insertPowerAppsRecord(transactionID || null, records);
 
     return NextResponse.json({
-      message: 'Nhận dữ liệu thành công.',
+      message: 'Receive data successfully.',
       saved,
       transactionID,
       recordsCount: records.length,
@@ -40,7 +36,7 @@ export async function POST(request: Request) {
     console.error('Error parsing request:', error);
     return NextResponse.json(
       {
-        error: 'Không thể xử lý yêu cầu.',
+        error: 'Cannot process request.',
         detail: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
