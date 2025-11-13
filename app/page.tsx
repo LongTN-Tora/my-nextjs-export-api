@@ -29,6 +29,7 @@ export default function Home() {
       try {
         setLoading(true);
         const res = await fetch('/api/getData');
+        console.log('Fetch response:', res);
         if (!res.ok) {
           throw new Error('Failed to fetch data');
         }
